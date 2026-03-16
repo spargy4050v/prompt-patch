@@ -25,12 +25,56 @@ export async function getInfo(req, res) {
 //   3. Nobody guesses → 0 pts for all
 //   4. Team draws, a team guesses → drawer +5, guesser +2
 export async function addScore(req, res) {
-  const subRound = req.body.sub_round || req.body.round_number || req.body.roundNumber
+  const subRound = Number(req.body.sub_round || req.body.round_number || req.body.roundNumber)
   const drawingTeamId = req.body.drawing_team_id || req.body.drawingTeamId || null
   const guessingTeamId = req.body.guessing_team_id || req.body.guessingTeamId || null
   const wordGuessed = req.body.word_guessed ?? req.body.drawing_correct ?? req.body.drawingCorrect ?? false
 
-  if (!subRound) return res.status(400).json({ error: 'sub_round required' })
+  if (!Number.isInteger(subRound) || subRound < 1) {
+    return res.status(400).json({ error: 'Valid sub_round required' })
+  }
+
+  // Enforce total sub-round formula based on approved teams only.
+  const { count: teamCount } = await supabase.from('teams')
+    .select('id', { count: 'exact', head: true }).eq('role', 'team').eq('status', 'approved')
+  const totalSubRounds = 2 * (teamCount || 0) + 2
+
+  if (subRound > totalSubRounds) {
+    return res.status(400).json({ error: `sub_round cannot exceed ${totalSubRounds} for current approved teams` })
+  }
+
+  // Prevent duplicate sub-round entry numbers.
+  const { data: existingSubRound } = await supabase.from('round2_scores')
+    .select('id').eq('round_number', subRound).maybeSingle()
+  if (existingSubRound) {
+    return res.status(400).json({ error: `Sub-round #${subRound} already exists` })
+  }
+
+  // Validate drawing/guessing teams are approved teams only.
+  const idsToValidate = [drawingTeamId, guessingTeamId].filter(Boolean)
+  if (idsToValidate.length > 0) {
+    const { data: approvedTeams } = await supabase.from('teams')
+      .select('id').in('id', idsToValidate).eq('role', 'team').eq('status', 'approved')
+    const approvedSet = new Set((approvedTeams || []).map(t => t.id))
+    if (drawingTeamId && !approvedSet.has(drawingTeamId)) {
+      return res.status(400).json({ error: 'Drawing team must be an approved team' })
+    }
+    if (guessingTeamId && !approvedSet.has(guessingTeamId)) {
+      return res.status(400).json({ error: 'Guessing team must be an approved team' })
+    }
+  }
+
+  if (drawingTeamId && guessingTeamId && drawingTeamId === guessingTeamId) {
+    return res.status(400).json({ error: 'Drawing and guessing team must be different' })
+  }
+
+  if (wordGuessed && !guessingTeamId) {
+    return res.status(400).json({ error: 'guessing_team_id is required when word_guessed is true' })
+  }
+
+  if (!wordGuessed && guessingTeamId) {
+    return res.status(400).json({ error: 'guessing_team_id must be empty when word_guessed is false' })
+  }
 
   // Validate host-draw limit (max 2)
   if (!drawingTeamId) {

@@ -13,7 +13,7 @@ export async function registerTeam(req, res) {
     return res.status(400).json({ error: 'Teams must have 2-3 members' })
   }
   for (const m of members) {
-    if (!m.name || !m.rollNumber || !m.branch || !m.year || !m.section) {
+    if (!m.name || !m.rollNumber || !m.collegeName || !m.phoneNumber) {
       return res.status(400).json({ error: 'All member fields required' })
     }
   }
@@ -33,7 +33,7 @@ export async function registerTeam(req, res) {
 
   const memberRows = members.map(m => ({
     team_id: team.id, name: m.name, roll_number: m.rollNumber,
-    branch: m.branch, year: m.year, section: m.section
+    college_name: m.collegeName, phone_number: m.phoneNumber
   }))
   await supabase.from('members').insert(memberRows)
 

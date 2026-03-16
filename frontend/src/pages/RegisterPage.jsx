@@ -8,8 +8,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [transactionId, setTransactionId] = useState('')
   const [members, setMembers] = useState([
-    { name: '', rollNumber: '', branch: '', year: '', section: '' },
-    { name: '', rollNumber: '', branch: '', year: '', section: '' }
+    { name: '', rollNumber: '', collegeName: '', phoneNumber: '' },
+    { name: '', rollNumber: '', collegeName: '', phoneNumber: '' }
   ])
   const [payment, setPayment] = useState(null)
   const [error, setError] = useState('')
@@ -28,7 +28,7 @@ export default function RegisterPage() {
   }
 
   const addMember = () => {
-    if (members.length < 3) setMembers([...members, { name: '', rollNumber: '', branch: '', year: '', section: '' }])
+    if (members.length < 3) setMembers([...members, { name: '', rollNumber: '', collegeName: '', phoneNumber: '' }])
   }
 
   const removeMember = (i) => {
@@ -105,11 +105,9 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" value={m.rollNumber} onChange={e => updateMember(i, 'rollNumber', e.target.value)} placeholder="Roll Number" required
                     className="px-3 py-2 bg-[#2f2f2f] rounded border border-[#444] focus:border-[#10a37f] focus:outline-none text-sm text-white placeholder-[#676767]" />
-                  <input type="text" value={m.branch} onChange={e => updateMember(i, 'branch', e.target.value)} placeholder="Branch" required
+                  <input type="text" value={m.collegeName} onChange={e => updateMember(i, 'collegeName', e.target.value)} placeholder="College Name" required
                     className="px-3 py-2 bg-[#2f2f2f] rounded border border-[#444] focus:border-[#10a37f] focus:outline-none text-sm text-white placeholder-[#676767]" />
-                  <input type="text" value={m.year} onChange={e => updateMember(i, 'year', e.target.value)} placeholder="Year" required
-                    className="px-3 py-2 bg-[#2f2f2f] rounded border border-[#444] focus:border-[#10a37f] focus:outline-none text-sm text-white placeholder-[#676767]" />
-                  <input type="text" value={m.section} onChange={e => updateMember(i, 'section', e.target.value)} placeholder="Section" required
+                  <input type="text" value={m.phoneNumber} onChange={e => updateMember(i, 'phoneNumber', e.target.value)} placeholder="Phone Number" required
                     className="px-3 py-2 bg-[#2f2f2f] rounded border border-[#444] focus:border-[#10a37f] focus:outline-none text-sm text-white placeholder-[#676767]" />
                 </div>
               </div>

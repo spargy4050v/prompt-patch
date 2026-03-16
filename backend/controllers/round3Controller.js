@@ -42,13 +42,12 @@ export async function startRound(req, res) {
     .select('*').eq('team_id', req.user.id).single()
 
   if (existing) {
-    if (existing.is_disqualified) return res.json({ disqualified: true, reason: existing.disqualify_reason })
     if (existing.completed_at) return res.json({ completed: true, score: existing.final_score })
     return res.json({ success: true, session: existing, resumed: true })
   }
 
   const { data: session } = await supabase.from('round3_sessions')
-    .insert({ team_id: req.user.id }).select().single()
+    .insert({ team_id: req.user.id, is_disqualified: false, disqualify_reason: null, tab_switches: 0 }).select().single()
 
   return res.json({ success: true, session })
 }
@@ -61,7 +60,6 @@ export async function completeTask(req, res) {
   const { data: session } = await supabase.from('round3_sessions')
     .select('*').eq('team_id', req.user.id).single()
   if (!session) return res.status(400).json({ error: 'No active session' })
-  if (session.is_disqualified) return res.status(403).json({ error: 'Disqualified' })
 
   // Enforce sequential order
   if (taskNum === 2 && !session.task1_completed) return res.status(400).json({ error: 'Complete Task 1 first' })
@@ -113,7 +111,6 @@ export async function submitFinal(req, res) {
   const { data: session } = await supabase.from('round3_sessions')
     .select('*').eq('team_id', req.user.id).single()
   if (!session) return res.status(400).json({ error: 'No session' })
-  if (session.is_disqualified) return res.status(403).json({ error: 'Disqualified' })
   if (!session.task1_completed || !session.task2_completed) {
     return res.status(400).json({ error: 'Complete all tasks first' })
   }
@@ -141,13 +138,9 @@ export async function submitFinal(req, res) {
   })
 }
 
-// POST /api/round3/disqualify — Self-report or server-side DQ
+// POST /api/round3/disqualify — disabled (kept for backward compatibility)
 export async function disqualify(req, res) {
-  const { reason } = req.body
-  await supabase.from('round3_sessions')
-    .update({ is_disqualified: true, disqualify_reason: reason || 'violation' })
-    .eq('team_id', req.user.id)
-  return res.json({ success: true })
+  return res.json({ success: true, disabled: true })
 }
 
 // POST /api/round3/reopen/:teamId — Admin reopens round for a team
@@ -161,7 +154,11 @@ export async function getSessions(req, res) {
   const { data } = await supabase.from('round3_sessions')
     .select('*, teams!inner(team_name)')
     .order('started_at', { ascending: false })
-  return res.json({ sessions: data || [] })
+  const sessions = (data || []).map(s => ({
+    ...s,
+    team_name: s.teams?.team_name || null
+  }))
+  return res.json({ sessions })
 }
 
 // GET /api/round3/session — Team gets own session state
@@ -171,22 +168,7 @@ export async function getSession(req, res) {
   return res.json({ session: data || null })
 }
 
-// POST /api/round3/tab-switch — Track tab switches
+// POST /api/round3/tab-switch — disabled (kept for backward compatibility)
 export async function trackTabSwitch(req, res) {
-  const { data: session } = await supabase.from('round3_sessions')
-    .select('tab_switches').eq('team_id', req.user.id).single()
-  if (!session) return res.status(400).json({ error: 'No session' })
-
-  const newCount = (session.tab_switches || 0) + 1
-
-  if (newCount >= 3) {
-    await supabase.from('round3_sessions')
-      .update({ tab_switches: newCount, is_disqualified: true, disqualify_reason: 'Excessive tab switching' })
-      .eq('team_id', req.user.id)
-    return res.json({ disqualified: true })
-  }
-
-  await supabase.from('round3_sessions')
-    .update({ tab_switches: newCount }).eq('team_id', req.user.id)
-  return res.json({ tabSwitches: newCount, warning: newCount >= 2 })
+  return res.json({ success: true, disabled: true, tabSwitches: 0, warning: false })
 }

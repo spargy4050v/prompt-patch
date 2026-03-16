@@ -107,9 +107,7 @@ export default function DashboardPage() {
               </div>
               {getRound(3).is_unlocked ? (
                 <div className="mt-4">
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4 text-sm text-red-300">
-                    ⚠️ Once started, you <strong>cannot refresh or leave</strong>. Doing so will result in disqualification. You can only start once.
-                  </div>
+                  <p className="text-[#b4b4b4] text-sm mb-4">Start the challenge and complete all 3 tasks in sequence.</p>
                   <button onClick={() => navigate('/round/3')} className="px-6 py-3 bg-[#10a37f] rounded-lg font-bold hover:bg-[#0d8a6a] transition">
                     Start Round 3 →
                   </button>

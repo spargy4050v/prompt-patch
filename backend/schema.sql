@@ -24,9 +24,8 @@ CREATE TABLE members (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   roll_number TEXT NOT NULL,
-  branch TEXT NOT NULL,
-  year TEXT NOT NULL,
-  section TEXT NOT NULL
+  college_name TEXT NOT NULL,
+  phone_number TEXT NOT NULL
 );
 
 -- ── ROUNDS CONFIG ──

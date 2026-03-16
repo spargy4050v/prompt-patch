@@ -23,12 +23,6 @@ export default function Round3Panel() {
     fetchSessions()
   }
 
-  const disqualify = async (teamId) => {
-    if (!confirm('Disqualify this team?')) return
-    await api.post('/round3/disqualify', { teamId, reason: 'admin_action' })
-    fetchSessions()
-  }
-
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -51,9 +45,6 @@ export default function Round3Panel() {
                   <button onClick={() => reopen(s.team_id)} className="text-xs text-blue-400 hover:underline flex items-center gap-1">
                     <RotateCcw size={12} /> Reopen
                   </button>
-                  {!s.is_disqualified && (
-                    <button onClick={() => disqualify(s.team_id)} className="text-xs text-red-400 hover:underline">DQ</button>
-                  )}
                 </div>
               </div>
 

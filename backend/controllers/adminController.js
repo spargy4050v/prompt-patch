@@ -102,9 +102,8 @@ const EXPORT_COLUMNS = {
     { key: 'transaction_id', label: 'Transaction ID' },
     { key: 'member_name', label: 'Member' },
     { key: 'roll_number', label: 'Roll No' },
-    { key: 'branch', label: 'Branch' },
-    { key: 'year', label: 'Year' },
-    { key: 'section', label: 'Section' }
+    { key: 'college_name', label: 'College Name' },
+    { key: 'phone_number', label: 'Phone Number' }
   ],
   leaderboard: [
     { key: 'team_name', label: 'Team' },
@@ -151,7 +150,7 @@ function pickColumns(allHeaders, queryColumns) {
 
 export async function exportTeams(req, res) {
   let query = supabase.from('teams')
-    .select('team_name, role, status, transaction_id, created_at, members(name, roll_number, branch, year, section)')
+    .select('team_name, role, status, transaction_id, created_at, members(name, roll_number, college_name, phone_number)')
     .order('created_at')
   if (req.query.status) query = query.eq('status', req.query.status)
   if (req.query.role) query = query.eq('role', req.query.role)
@@ -161,8 +160,9 @@ export async function exportTeams(req, res) {
     (t.members || [{}]).map(m => ({
       team_name: t.team_name, role: t.role, status: t.status,
       transaction_id: t.transaction_id, member_name: m.name || '',
-      roll_number: m.roll_number || '', branch: m.branch || '',
-      year: m.year || '', section: m.section || ''
+      roll_number: m.roll_number || '',
+      college_name: m.college_name || '',
+      phone_number: m.phone_number || ''
     }))
   )
   const headers = pickColumns(EXPORT_COLUMNS.teams, req.query.columns)

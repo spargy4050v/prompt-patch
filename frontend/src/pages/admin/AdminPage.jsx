@@ -56,10 +56,23 @@ export default function AdminPage() {
    TEAMS TAB
 ══════════════════════════════════════════ */
 function TeamsTab() {
+  const { isAdmin } = useAuth()
   const [teams, setTeams] = useState([])
   const [filter, setFilter] = useState('pending')
   const [expanded, setExpanded] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [createSuccess, setCreateSuccess] = useState('')
+  const [newTeam, setNewTeam] = useState({
+    teamName: '',
+    password: '',
+    transactionId: '',
+    members: [
+      { name: '', rollNumber: '', collegeName: '', phoneNumber: '' },
+      { name: '', rollNumber: '', collegeName: '', phoneNumber: '' }
+    ]
+  })
 
   const fetchTeams = async () => {
     setLoading(true)
@@ -72,6 +85,60 @@ function TeamsTab() {
 
   useEffect(() => { fetchTeams() }, [filter])
 
+  const updateNewMember = (index, field, value) => {
+    const updated = [...newTeam.members]
+    updated[index] = { ...updated[index], [field]: value }
+    setNewTeam({ ...newTeam, members: updated })
+  }
+
+  const addNewMember = () => {
+    if (newTeam.members.length >= 3) return
+    setNewTeam({
+      ...newTeam,
+      members: [...newTeam.members, { name: '', rollNumber: '', collegeName: '', phoneNumber: '' }]
+    })
+  }
+
+  const removeNewMember = (index) => {
+    if (newTeam.members.length <= 2) return
+    setNewTeam({
+      ...newTeam,
+      members: newTeam.members.filter((_, i) => i !== index)
+    })
+  }
+
+  const createTeam = async (e) => {
+    e.preventDefault()
+    setCreateError('')
+    setCreateSuccess('')
+    setCreating(true)
+    try {
+      const payload = {
+        teamName: newTeam.teamName,
+        password: newTeam.password,
+        transactionId: newTeam.transactionId || null,
+        members: newTeam.members
+      }
+      await api.post('/teams', payload)
+      setCreateSuccess('Team created and approved.')
+      setNewTeam({
+        teamName: '',
+        password: '',
+        transactionId: '',
+        members: [
+          { name: '', rollNumber: '', collegeName: '', phoneNumber: '' },
+          { name: '', rollNumber: '', collegeName: '', phoneNumber: '' }
+        ]
+      })
+      if (filter && filter !== 'approved') setFilter('approved')
+      fetchTeams()
+      setTimeout(() => setCreateSuccess(''), 2500)
+    } catch (err) {
+      setCreateError(err.message)
+    }
+    setCreating(false)
+  }
+
   const updateStatus = async (id, status) => {
     await api.patch(`/teams/${id}/status`, { status })
     fetchTeams()
@@ -80,6 +147,73 @@ function TeamsTab() {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Teams</h2>
+
+      {isAdmin && (
+        <form onSubmit={createTeam} className="mb-5 bg-[#2f2f2f] border border-[#444] rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-[#b4b4b4]">Create Team Directly</h3>
+            {newTeam.members.length < 3 && (
+              <button type="button" onClick={addNewMember} className="text-xs text-[#10a37f] hover:underline flex items-center gap-1">
+                <Plus size={12} /> Add Member
+              </button>
+            )}
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-2">
+            <input
+              type="text"
+              value={newTeam.teamName}
+              onChange={e => setNewTeam({ ...newTeam, teamName: e.target.value })}
+              placeholder="Team Name"
+              required
+              className="px-3 py-2 bg-[#1a1a1a] rounded border border-[#444] text-sm focus:border-[#10a37f] focus:outline-none"
+            />
+            <input
+              type="password"
+              value={newTeam.password}
+              onChange={e => setNewTeam({ ...newTeam, password: e.target.value })}
+              placeholder="Password"
+              required
+              className="px-3 py-2 bg-[#1a1a1a] rounded border border-[#444] text-sm focus:border-[#10a37f] focus:outline-none"
+            />
+            <input
+              type="text"
+              value={newTeam.transactionId}
+              onChange={e => setNewTeam({ ...newTeam, transactionId: e.target.value })}
+              placeholder="Transaction ID (optional)"
+              className="px-3 py-2 bg-[#1a1a1a] rounded border border-[#444] text-sm focus:border-[#10a37f] focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {newTeam.members.map((m, i) => (
+              <div key={i} className="bg-[#1a1a1a] border border-[#333] rounded-lg p-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-[#676767]">Member {i + 1}</span>
+                  {newTeam.members.length > 2 && (
+                    <button type="button" onClick={() => removeNewMember(i)} className="text-red-400 hover:text-red-300">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="grid md:grid-cols-4 gap-2">
+                  <input type="text" value={m.name} onChange={e => updateNewMember(i, 'name', e.target.value)} placeholder="Name" required className="px-2 py-2 bg-[#2f2f2f] rounded border border-[#444] text-xs focus:border-[#10a37f] focus:outline-none" />
+                  <input type="text" value={m.rollNumber} onChange={e => updateNewMember(i, 'rollNumber', e.target.value)} placeholder="Roll No" required className="px-2 py-2 bg-[#2f2f2f] rounded border border-[#444] text-xs focus:border-[#10a37f] focus:outline-none" />
+                  <input type="text" value={m.collegeName} onChange={e => updateNewMember(i, 'collegeName', e.target.value)} placeholder="College Name" required className="px-2 py-2 bg-[#2f2f2f] rounded border border-[#444] text-xs focus:border-[#10a37f] focus:outline-none" />
+                  <input type="text" value={m.phoneNumber} onChange={e => updateNewMember(i, 'phoneNumber', e.target.value)} placeholder="Phone Number" required className="px-2 py-2 bg-[#2f2f2f] rounded border border-[#444] text-xs focus:border-[#10a37f] focus:outline-none" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {createError && <p className="text-red-400 text-sm">{createError}</p>}
+          {createSuccess && <p className="text-[#10a37f] text-sm">{createSuccess}</p>}
+          <button type="submit" disabled={creating} className="px-4 py-2 bg-[#10a37f] rounded text-sm font-medium hover:bg-[#0d8a6a] disabled:opacity-60">
+            {creating ? 'Creating...' : 'Create Team'}
+          </button>
+        </form>
+      )}
+
       <div className="flex gap-2 mb-4">
         {['pending', 'approved', 'rejected', ''].map(f => (
           <button key={f} onClick={() => setFilter(f)}
@@ -115,7 +249,7 @@ function TeamsTab() {
                   <p className="text-[#676767] mb-2">Registered: {new Date(t.created_at).toLocaleString()}</p>
                   {t.members?.map((m, i) => (
                     <div key={i} className="bg-[#1a1a1a] p-2 rounded mb-1 text-xs text-[#b4b4b4]">
-                      {m.name} — {m.roll_number} — {m.branch} {m.year}{m.section}
+                      {m.name} — {m.roll_number} — {m.college_name} — {m.phone_number}
                     </div>
                   ))}
                   {t.status !== 'pending' && (

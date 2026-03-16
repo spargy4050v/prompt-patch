@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { AlertTriangle, HelpCircle, Lock, Lightbulb } from 'lucide-react'
+import { HelpCircle, Lock, Lightbulb } from 'lucide-react'
 
 /* ── Round 3: OOP's, WHAT'S WRONG? ─────────────────────────────────
    Self-contained 3-task puzzle with anti-cheat.
@@ -13,48 +13,14 @@ import { AlertTriangle, HelpCircle, Lock, Lightbulb } from 'lucide-react'
 ──────────────────────────────────────────────────────────────────── */
 
 export default function Round3Page() {
-  const { user } = useAuth()
+  useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState('loading') // loading, ready, task1, task2, task3, complete, dq
+  const [step, setStep] = useState('loading') // loading, ready, task1, task2, task3, complete
   const [session, setSession] = useState(null)
   const [score, setScore] = useState(null)
   const [error, setError] = useState('')
   const [hints, setHints] = useState({ 1: [], 2: [], 3: [] })
   const [hintLoading, setHintLoading] = useState(false)
-  const tabSwitches = useRef(0)
-  const startedRef = useRef(false)
-
-  /* ── Anti-Cheat: detect reload ── */
-  useEffect(() => {
-    if (step !== 'task1' && step !== 'task2' && step !== 'task3') return
-    const navEntry = performance.getEntriesByType('navigation')[0]
-    if (navEntry && navEntry.type === 'reload' && startedRef.current) {
-      api.post('/round3/tab-switch', { count: 99 }).catch(() => {})
-      setStep('dq')
-    }
-  }, [step])
-
-  /* ── Anti-Cheat: beforeunload warning ── */
-  useEffect(() => {
-    if (step !== 'task1' && step !== 'task2' && step !== 'task3') return
-    const handler = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [step])
-
-  /* ── Anti-Cheat: tab switch detection ── */
-  useEffect(() => {
-    if (step !== 'task1' && step !== 'task2' && step !== 'task3') return
-    const handler = () => {
-      if (document.hidden) {
-        tabSwitches.current++
-        api.post('/round3/tab-switch', { count: tabSwitches.current }).catch(() => {})
-        if (tabSwitches.current >= 3) setStep('dq')
-      }
-    }
-    document.addEventListener('visibilitychange', handler)
-    return () => document.removeEventListener('visibilitychange', handler)
-  }, [step])
 
   /* ── Initial load: check existing session ── */
   useEffect(() => {
@@ -64,14 +30,12 @@ export default function Round3Page() {
         if (data.session) {
           const s = data.session
           setSession(s)
-          if (s.is_disqualified) { setStep('dq'); return }
           if (s.completed_at) { setScore(s.final_score); setStep('complete'); return }
           // Resume from last incomplete task
           if (!s.task1_completed) setStep('task1')
           else if (!s.task2_completed) setStep('task2')
           else if (!s.task3_completed) setStep('task3')
           else setStep('complete')
-          startedRef.current = true
         } else {
           setStep('ready')
         }
@@ -88,7 +52,6 @@ export default function Round3Page() {
       const data = await api.post('/round3/start')
       setSession(data.session)
       setStep('task1')
-      startedRef.current = true
     } catch (err) {
       setError(err.message)
     }
@@ -135,32 +98,13 @@ export default function Round3Page() {
   /* ── Render ── */
   if (step === 'loading') return <div className="min-h-screen bg-[#212121]"><LoadingSpinner /></div>
 
-  if (step === 'dq') return (
-    <div className="min-h-screen bg-[#212121] text-white flex items-center justify-center p-4">
-      <div className="text-center">
-        <AlertTriangle size={48} className="mx-auto text-red-400 mb-4" />
-        <h2 className="text-2xl font-bold mb-2 text-red-400">Disqualified</h2>
-        <p className="text-[#b4b4b4] mb-6">You were disqualified for violating the rules.</p>
-        <button onClick={() => navigate('/dashboard')} className="text-[#10a37f] hover:underline">Back to Dashboard</button>
-      </div>
-    </div>
-  )
-
   if (step === 'ready') return (
     <div className="min-h-screen bg-[#212121] text-white flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <Code size={48} className="mx-auto text-[#10a37f] mb-4" />
         <h2 className="text-2xl font-bold mb-2">Round 3: OOP's, WHAT'S WRONG?</h2>
         <p className="text-[#b4b4b4] mb-4">You will face 3 sequential challenges. Use hints wisely — they cost points.</p>
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-sm text-red-300 text-left">
-          <p className="font-bold mb-1">⚠️ Rules:</p>
-          <ul className="space-y-1 list-disc list-inside">
-            <li>Do NOT refresh the page</li>
-            <li>Do NOT switch tabs (3 switches = DQ)</li>
-            <li>Do NOT close this window</li>
-            <li>You can only start ONCE</li>
-          </ul>
-        </div>
+        <p className="text-[#676767] text-sm mb-6">You can start once and continue from your saved progress until submission.</p>
         {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
         <button onClick={handleStart} className="px-8 py-3 bg-[#10a37f] rounded-lg font-bold hover:bg-[#0d8a6a] transition text-lg">
           Start Challenge
@@ -188,13 +132,6 @@ export default function Round3Page() {
             }`} />
           ))}
         </div>
-
-        {/* Tab switch warning */}
-        {tabSwitches.current > 0 && tabSwitches.current < 3 && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4 text-sm text-yellow-300">
-            ⚠️ Tab switches detected: {tabSwitches.current}/3. One more and you're out!
-          </div>
-        )}
 
         {step === 'task1' && <Task1 onComplete={completeTask} hints={hints[1]} onHint={() => getHint(1)} hintLoading={hintLoading} />}
         {step === 'task2' && <Task2 onComplete={completeTask} hints={hints[2]} onHint={() => getHint(2)} hintLoading={hintLoading} />}
