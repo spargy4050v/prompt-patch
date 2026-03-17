@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { requireAuth, requireStaff, requireApproved } from '../middleware/auth.js'
-import { uploadImage, getSubmissions, scoreSubmission } from '../controllers/round1Controller.js'
+import { requireAuth, requireStaff, requireApproved, requireAdmin } from '../middleware/auth.js'
+import { uploadImage, getSubmissions, scoreSubmission, manualAwardRound1 } from '../controllers/round1Controller.js'
 import { getInfo, addScore, getScores, deleteScore } from '../controllers/round2Controller.js'
 import * as r3 from '../controllers/round3Controller.js'
 
@@ -12,6 +12,7 @@ const router = Router()
 router.post('/round1/upload', requireAuth, requireApproved, upload.single('image'), uploadImage)
 router.get('/round1/submissions', requireAuth, getSubmissions)
 router.post('/round1/score', requireAuth, requireStaff, scoreSubmission)
+router.post('/round1/manual-award', requireAuth, requireAdmin, manualAwardRound1)
 
 // Round 2
 router.get('/round2/info', requireAuth, requireStaff, getInfo)

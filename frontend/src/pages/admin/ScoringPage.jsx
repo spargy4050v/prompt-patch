@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { Check, ChevronDown, ChevronUp, Image, Plus, Trash2 } from 'lucide-react'
 
 export default function ScoringPage() {
@@ -22,14 +23,21 @@ export default function ScoringPage() {
 
 /* ── Round 1 Scoring ── */
 function Round1Scoring() {
+  const { isAdmin } = useAuth()
+  const [teams, setTeams] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [manualScores, setManualScores] = useState({})
 
   const fetchSubs = async () => {
     setLoading(true)
     try {
-      const data = await api.get('/round1/submissions')
+      const [data, teamsData] = await Promise.all([
+        api.get('/round1/submissions'),
+        api.get('/teams?role=team&status=approved')
+      ])
       setSubmissions(data.submissions || [])
+      setTeams(teamsData.teams || [])
     } catch {}
     setLoading(false)
   }
@@ -45,10 +53,29 @@ function Round1Scoring() {
     }
   }
 
+  const manualAward = async (teamId, difficulty, max) => {
+    const key = `${teamId}-${difficulty}`
+    const raw = manualScores[key]
+    const value = Number(raw)
+    if (!Number.isFinite(value) || value < 0 || value > max) {
+      alert(`Score must be between 0 and ${max}`)
+      return
+    }
+    try {
+      await api.post('/round1/manual-award', { teamId, difficulty, score: value })
+      fetchSubs()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   if (loading) return <p className="text-[#676767]">Loading submissions...</p>
 
   // Group by team
   const byTeam = {}
+  teams.forEach(t => {
+    byTeam[t.id] = { name: t.team_name || t.id, easy: null, hard: null }
+  })
   submissions.forEach(s => {
     if (!byTeam[s.team_id]) byTeam[s.team_id] = { name: s.team_name || s.team_id, easy: null, hard: null }
     if (s.difficulty === 'easy') byTeam[s.team_id].easy = s
@@ -90,6 +117,29 @@ function Round1Scoring() {
                       </>
                     ) : (
                       <p className="text-[#444] text-xs">No submission</p>
+                    )}
+
+                    {isAdmin && (
+                      <div className="mt-2 pt-2 border-t border-[#333]">
+                        <p className="text-[11px] text-[#676767] mb-1">Manual award (admin only)</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={max}
+                            value={manualScores[`${tid}-${diff}`] ?? ''}
+                            onChange={e => setManualScores(prev => ({ ...prev, [`${tid}-${diff}`]: e.target.value }))}
+                            className="w-20 px-2 py-1 bg-[#2f2f2f] rounded border border-[#444] text-sm text-white focus:border-[#10a37f] focus:outline-none"
+                            placeholder="pts"
+                          />
+                          <button
+                            onClick={() => manualAward(tid, diff, max)}
+                            className="px-2 py-1 text-xs bg-[#10a37f] rounded hover:bg-[#0d8a6a]"
+                          >
+                            Award
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )

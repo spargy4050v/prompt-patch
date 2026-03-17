@@ -89,3 +89,55 @@ export async function scoreSubmission(req, res) {
   await refreshLeaderboard(sub.team_id)
   return res.json({ success: true })
 }
+
+// POST /api/round1/manual-award — Admin awards score even without image upload
+export async function manualAwardRound1(req, res) {
+  const { teamId, difficulty, score } = req.body
+  if (!teamId) return res.status(400).json({ error: 'teamId is required' })
+  if (!['easy', 'hard'].includes(difficulty)) return res.status(400).json({ error: 'Invalid difficulty' })
+
+  const max = difficulty === 'easy' ? 15 : 25
+  if (typeof score !== 'number' || score < 0 || score > max) {
+    return res.status(400).json({ error: `Score must be 0-${max}` })
+  }
+
+  // Ensure target is a team account
+  const { data: team } = await supabase
+    .from('teams')
+    .select('id, role')
+    .eq('id', teamId)
+    .single()
+  if (!team || team.role !== 'team') return res.status(404).json({ error: 'Team not found' })
+
+  // Reuse latest final submission if available; otherwise create a placeholder submission.
+  const { data: existing } = await supabase
+    .from('round1_submissions')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('difficulty', difficulty)
+    .eq('is_final', true)
+    .order('uploaded_at', { ascending: false })
+    .limit(1)
+
+  if (existing?.length) {
+    await supabase.from('round1_submissions').update({
+      score,
+      scored_by: req.user.id,
+      scored_at: new Date().toISOString()
+    }).eq('id', existing[0].id)
+  } else {
+    const placeholderUrl = `https://placehold.co/800x600?text=Manual+Award+${difficulty}`
+    await supabase.from('round1_submissions').insert({
+      team_id: teamId,
+      difficulty,
+      image_url: placeholderUrl,
+      is_final: true,
+      score,
+      scored_by: req.user.id,
+      scored_at: new Date().toISOString()
+    })
+  }
+
+  await refreshLeaderboard(teamId)
+  return res.json({ success: true })
+}
