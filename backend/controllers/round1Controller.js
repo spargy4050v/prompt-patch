@@ -19,7 +19,7 @@ export async function uploadImage(req, res) {
   const { error: uploadErr } = await supabase.storage
     .from('round1-submissions')
     .upload(fileName, file.buffer, { contentType: file.mimetype })
-  if (uploadErr) return res.status(500).json({ error: 'Upload failed' })
+  if (uploadErr) return res.status(500).json({ error: uploadErr.message || 'Upload failed' })
 
   const { data: { publicUrl } } = supabase.storage.from('round1-submissions').getPublicUrl(fileName)
 
@@ -36,14 +36,20 @@ export async function uploadImage(req, res) {
   return res.json({ success: true, submission: sub })
 }
 
-// GET /api/round1/submissions — Staff views all final submissions
+// GET /api/round1/submissions — Teams see own finals, staff can view/filter all
 export async function getSubmissions(req, res) {
   let query = supabase.from('round1_submissions')
     .select('*')
     .eq('is_final', true)
     .order('uploaded_at', { ascending: false })
 
-  if (req.query.team_id) query = query.eq('team_id', req.query.team_id)
+  // Teams can only see their own uploads; staff can filter by any team_id.
+  if (req.user.role === 'team') {
+    query = query.eq('team_id', req.user.id)
+  } else if (req.query.team_id) {
+    query = query.eq('team_id', req.query.team_id)
+  }
+
   if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty)
 
   const { data } = await query

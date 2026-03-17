@@ -10,7 +10,7 @@ const router = Router()
 
 // Round 1
 router.post('/round1/upload', requireAuth, requireApproved, upload.single('image'), uploadImage)
-router.get('/round1/submissions', requireAuth, requireStaff, getSubmissions)
+router.get('/round1/submissions', requireAuth, getSubmissions)
 router.post('/round1/score', requireAuth, requireStaff, scoreSubmission)
 
 // Round 2

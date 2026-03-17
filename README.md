@@ -118,7 +118,7 @@ The permanent admin account **cannot be deleted**. It can create additional admi
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/round1/upload` | Team | Upload image |
-| GET | `/api/round1/submissions` | Staff | View submissions |
+| GET | `/api/round1/submissions` | Auth | Teams: own submissions, Staff: all/filter |
 | POST | `/api/round1/score` | Staff | Score submission |
 | POST | `/api/round2/score` | Staff | Add R2 score entry |
 | GET | `/api/round2/scores` | Staff | View R2 scores |
